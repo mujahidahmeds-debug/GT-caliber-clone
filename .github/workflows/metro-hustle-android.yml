@@ -29,15 +29,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ARCHIVE=/tmp/metro-hustle-3d.tar.gz
-          : > "$ARCHIVE"
-          for n in 01 02 03 04 05 06 07 08; do
-            head -c 3750 "metro-hustle-source-b64/$n.part" >> "$ARCHIVE"
-          done
-          head -c 2042 metro-hustle-source-b64/09.part >> "$ARCHIVE"
-          tar -tzf "$ARCHIVE" >/dev/null
+          cat metro-hustle-source-b64/*.part | tr -d '\r\n ' | base64 --decode > /tmp/metro-hustle-3d.tar.gz
+          tar -tzf /tmp/metro-hustle-3d.tar.gz >/dev/null
           mkdir -p work
-          tar -xzf "$ARCHIVE" -C work
+          tar -xzf /tmp/metro-hustle-3d.tar.gz -C work
           test -f work/metro-hustle-3d/package.json
 
       - name: Set up Node.js
