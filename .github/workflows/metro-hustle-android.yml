@@ -30,8 +30,8 @@ jobs:
         run: |
           set -euo pipefail
           test -d metro-hustle-source-b64
-          cat metro-hustle-source-b64/*.part > /tmp/metro-hustle-3d.tar.gz.b64
-          base64 --decode /tmp/metro-hustle-3d.tar.gz.b64 > /tmp/metro-hustle-3d.tar.gz
+          cat metro-hustle-source-b64/*.part > /tmp/metro-hustle-3d.tar.gz
+          tar -tzf /tmp/metro-hustle-3d.tar.gz >/dev/null
           mkdir -p work
           tar -xzf /tmp/metro-hustle-3d.tar.gz -C work
           test -f work/metro-hustle-3d/package.json
