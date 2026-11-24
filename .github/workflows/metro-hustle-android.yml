@@ -72,6 +72,15 @@ jobs:
         working-directory: work/metro-hustle-3d
         run: npx cap sync android
 
+      - name: Correct Gradle wrapper distribution version
+        working-directory: work/metro-hustle-3d
+        run: |
+          set -euo pipefail
+          sed -i 's/gradle-8\.13\.0-bin\.zip/gradle-8.13-bin.zip/' android/gradle/wrapper/gradle-wrapper.properties
+          sed -i 's/VERSION="8\.13\.0"/VERSION="8.13"/' android/gradlew
+          grep -q 'gradle-8.13-bin.zip' android/gradle/wrapper/gradle-wrapper.properties
+          grep -q 'VERSION="8.13"' android/gradlew
+
       - name: Build debug APK
         working-directory: work/metro-hustle-3d/android
         run: |
