@@ -1,0 +1,105 @@
+name: Metro Hustle 3D Android Build
+
+on:
+  push:
+    branches:
+      - metro-hustle-3d-cloud-build
+    paths:
+      - '.github/workflows/metro-hustle-android.yml'
+      - 'metro-hustle-source-b64/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: metro-hustle-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Test and build Android APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reconstruct source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d metro-hustle-source-b64
+          cat metro-hustle-source-b64/*.part > /tmp/metro-hustle-3d.zip.b64
+          base64 --decode /tmp/metro-hustle-3d.zip.b64 > /tmp/metro-hustle-3d.zip
+          unzip -t /tmp/metro-hustle-3d.zip
+          mkdir -p work
+          unzip -q /tmp/metro-hustle-3d.zip -d work
+          test -f work/metro-hustle-3d/package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: work/metro-hustle-3d/package.json
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Platform 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Install JavaScript dependencies
+        working-directory: work/metro-hustle-3d
+        run: npm install --no-audit --no-fund
+
+      - name: Run project tests
+        working-directory: work/metro-hustle-3d
+        run: npm test
+
+      - name: Build web application
+        working-directory: work/metro-hustle-3d
+        run: npm run build
+
+      - name: Synchronize Capacitor Android project
+        working-directory: work/metro-hustle-3d
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: work/metro-hustle-3d/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Verify APK
+        working-directory: work/metro-hustle-3d
+        run: |
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          ls -lh "$APK"
+          sha256sum "$APK"
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-hustle-3d-android-debug-apk
+          path: work/metro-hustle-3d/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload web build and test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-hustle-3d-web-build
+          path: |
+            work/metro-hustle-3d/dist/
+            work/metro-hustle-3d/BUILD_STATUS.md
+          if-no-files-found: warn
+          retention-days: 14
