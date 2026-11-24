@@ -7,6 +7,7 @@ on:
       - main
       - vicebound/android-foundation
     paths:
+      - "handoff/**"
       - "game/**"
       - "tools/**"
       - ".github/workflows/android-build.yml"
@@ -26,6 +27,37 @@ jobs:
           lfs: true
           submodules: recursive
 
+      - name: Overlay uploaded VICEBOUND project bundle
+        shell: bash
+        run: |
+          ARCHIVE="handoff/VICEBOUND-Android-Foundation-v0.4-AUDITED.zip"
+          if [[ ! -f "$ARCHIVE" ]]; then
+            echo "Missing $ARCHIVE. Upload the audited VICEBOUND ZIP to this exact path."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/vicebound-bundle"
+          unzip -q "$ARCHIVE" -d "$RUNNER_TEMP/vicebound-bundle"
+          SOURCE="$RUNNER_TEMP/vicebound-bundle/VICEBOUND-Android-Foundation"
+          test -f "$SOURCE/game/project.godot"
+          rsync -a --exclude='.git' --exclude='.github/workflows/android-build.yml' "$SOURCE/" ./
+          git lfs pull
+          git submodule update --init --recursive
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("game")
+          pointers = []
+          for p in root.rglob("*"):
+              if p.is_file():
+                  try:
+                      if p.open("rb").read(80).startswith(b"version https://git-lfs.github.com/spec/v1"):
+                          pointers.append(str(p))
+                  except OSError:
+                      pass
+          if pointers:
+              raise SystemExit(f"{len(pointers)} Git LFS pointer files remain; first: {pointers[:10]}")
+          print("Git LFS payload check passed")
+          PY
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -35,11 +67,11 @@ jobs:
       - name: Configure preinstalled Android SDK
         run: |
           SDK_PATH="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          test -x "$SDK_PATH/cmdline-tools/latest/bin/sdkmanager" || find "$SDK_PATH/cmdline-tools" -maxdepth 3 -name sdkmanager -type f
+          SDKMANAGER="$(find "$SDK_PATH/cmdline-tools" -maxdepth 3 -name sdkmanager -type f | head -n 1)"
+          test -n "$SDKMANAGER"
           echo "ANDROID_HOME=$SDK_PATH" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_PATH" >> "$GITHUB_ENV"
           echo "$SDK_PATH/platform-tools" >> "$GITHUB_PATH"
-          SDKMANAGER="$(find "$SDK_PATH/cmdline-tools" -maxdepth 3 -name sdkmanager -type f | head -n 1)"
           "$SDKMANAGER" --licenses </dev/null || true
           "$SDKMANAGER" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
