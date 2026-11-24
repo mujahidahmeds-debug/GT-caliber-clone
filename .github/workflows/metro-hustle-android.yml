@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat metro-hustle-source-b64/*.part | tr -d '\r\n ' | base64 --decode > /tmp/metro-hustle-3d.tar.gz
+          cat metro-hustle-source-b64/*.part > /tmp/metro-hustle-3d.tar.gz
           tar -tzf /tmp/metro-hustle-3d.tar.gz >/dev/null
           mkdir -p work
           tar -xzf /tmp/metro-hustle-3d.tar.gz -C work
