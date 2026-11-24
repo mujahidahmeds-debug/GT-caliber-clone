@@ -119,10 +119,17 @@ jobs:
           use_preset_export_path: true
           verbose: true
 
+      - name: Inspect exported APK location
+        run: |
+          find dist -maxdepth 5 -type f -printf "%p (%s bytes)\\n" || true
+          find . -maxdepth 5 -type f -name "*.apk" -printf "%p (%s bytes)\\n"
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: vicebound-android-debug
-          path: dist/vicebound-android-debug.apk
+          path: |
+            dist/**/*.apk
+            dist/*.apk
           if-no-files-found: error
           retention-days: 14
