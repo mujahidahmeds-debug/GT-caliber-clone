@@ -60,6 +60,11 @@ jobs:
                       pass
           if pointers:
               raise SystemExit(f"{len(pointers)} unresolved LFS pointers remain: {pointers[:10]}")
+          preset = root / "export_presets.cfg"
+          lines = preset.read_text().splitlines()
+          lines = [line for line in lines if not line.startswith("gradle_build/min_sdk=") and not line.startswith("gradle_build/target_sdk=")]
+          preset.write_text("\n".join(lines) + "\n")
+          print("Removed unsupported non-Gradle Android SDK overrides; using Godot default target SDK")
           print("Project structure and Git LFS payload checks passed")
           PY
 
