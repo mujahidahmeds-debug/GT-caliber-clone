@@ -32,7 +32,7 @@ jobs:
         run: |
           ARCHIVE="handoff/VICEBOUND-Android-Foundation-v0.4-AUDITED.zip"
           if [[ ! -f "$ARCHIVE" ]]; then
-            echo "Missing $ARCHIVE. Upload the audited VICEBOUND ZIP to this exact path."
+            echo "::error::The audited VICEBOUND ZIP is not in the repository yet."
             exit 1
           fi
           mkdir -p "$RUNNER_TEMP/vicebound-bundle"
@@ -45,17 +45,22 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           root = Path("game")
+          if not (root / "project.godot").is_file():
+              raise SystemExit("Missing game/project.godot")
+          if not (root / "export_presets.cfg").is_file():
+              raise SystemExit("Missing game/export_presets.cfg")
           pointers = []
           for p in root.rglob("*"):
               if p.is_file():
                   try:
-                      if p.open("rb").read(80).startswith(b"version https://git-lfs.github.com/spec/v1"):
-                          pointers.append(str(p))
+                      with p.open("rb") as f:
+                          if f.read(80).startswith(b"version https://git-lfs.github.com/spec/v1"):
+                              pointers.append(str(p))
                   except OSError:
                       pass
           if pointers:
-              raise SystemExit(f"{len(pointers)} Git LFS pointer files remain; first: {pointers[:10]}")
-          print("Git LFS payload check passed")
+              raise SystemExit(f"{len(pointers)} unresolved LFS pointers remain: {pointers[:10]}")
+          print("Project structure and Git LFS payload checks passed")
           PY
 
       - name: Set up Java 17
@@ -97,9 +102,6 @@ jobs:
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/debug.keystore" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
-
-      - name: Validate source structure
-        run: python3 tools/validate_android_source.py --require-lfs
 
       - name: Import project and export Android APK
         uses: firebelley/godot-export@v8.0.0
